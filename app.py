@@ -1,4 +1,5 @@
 import os
+import hmac
 import streamlit as st
 import pandas as pd
 import requests
@@ -12,6 +13,7 @@ load_dotenv()
 METABASE_URL = os.environ.get("METABASE_URL", "https://metabase.grayquest.com")
 API_KEY = os.environ["METABASE_API_KEY"]
 DATABASE_ID = int(os.environ.get("METABASE_DATABASE_ID", "2"))
+APP_PASSWORD = os.environ["APP_PASSWORD"]
 
 st.set_page_config(
     page_title="Policy Mapping Dashboard",
@@ -41,6 +43,29 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+
+# ─── AUTH GATE ─────────────────────────────────────────────────────────────────
+def check_password() -> bool:
+    """Simple shared-password gate. Returns True once authenticated."""
+    if st.session_state.get("authenticated"):
+        return True
+
+    st.title("🔒 Policy Mapping Dashboard")
+    with st.form("login_form"):
+        pwd = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+    if submitted:
+        if hmac.compare_digest(pwd, APP_PASSWORD):
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("❌ Incorrect password.")
+    return False
+
+
+if not check_password():
+    st.stop()
 
 
 # ─── METABASE HELPER ──────────────────────────────────────────────────────────
